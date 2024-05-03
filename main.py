@@ -134,32 +134,22 @@ if __name__ == '__main__':
     while frames:
         frame_index = 0
         max_lrs = lrs(frames_ordered[-1], frames[frame_index])
-        frames_batch_last_index = next((i for i, f in enumerate(frames) if f['tags_len'] <= max_lrs * 2), len(frames) - 1) - 1
-        #print(f'frames batch: {frames_batch_last_index}', end='\r')
-        #print(f'frames batch: {len(frames_batch)}', end='\r')
-        #lrs_list = list(map(lambda f: lrs(frames_ordered[-1], f), frames_batch))
-        # with Pool() as p:
-        #     chunk_size = 10000
-        #     lrs_list = p.starmap(lrs, zip(repeat(frames_ordered[-1]), frames_batch), chunksize=chunk_size)
+        frames_batch_last_index = next((i for i in range(len(frames)) if frames[i]['tags_len'] <= max_lrs * 2), len(frames) - 1) - 1
+        border = frames_ordered[-1]['tags_len'] // 2
         i = 0
         while i < frames_batch_last_index:
             lrs_val = lrs(frames_ordered[-1], frames[i])
-            if lrs_val > max_lrs:
+            if lrs_val >= max_lrs:
                 max_lrs = lrs_val
                 frame_index = i
-                frames_batch_last_index = next((j for j, f in enumerate(frames[i:]) if f['tags_len'] <= max_lrs * 2), frames_batch_last_index) - 1
-                if max_lrs == frames_ordered[-1]['tags_len'] // 2:
+                frames_batch_last_index = next((j for j in range(len(frames) - i - 1, i + 1) if frames[j]['tags_len'] <= max_lrs * 2), frames_batch_last_index) - 1
+                border = frames[i]['tags_len'] // 2
+                if max_lrs == border:
                     break
-            else:
-                i += 1
-        #frame_index = lrs_list.index(max(lrs_list))
+            i += 1
         frames_ordered.append(frames.pop(frame_index))
-        #print(f'index: {frame_index}', end='\r')
-        #print(f'frames ordered: {len(frames_ordered)}', end='\r')
         pbar.update(len(frames_ordered))
     pbar.finish()
-
-    #print(f'frames ordered: {frames_ordered[:3]}')
 
 
     # calculate the sum of LRS

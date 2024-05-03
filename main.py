@@ -28,7 +28,7 @@ def pick_dataset(data_dir='data'):
     parser.add_argument("file", type=str, help="The name of the file")
     parser.add_argument("--data_dir", type=str, default=data_dir, help="The path to the data directory")
     args = parser.parse_args()
-    return os.path.join(args.data_dir, args.file)
+    return args.file, os.path.join(args.data_dir, args.file)
 
 
 # hash for set
@@ -50,11 +50,13 @@ def lrs(frame_1, frame_2):
 
 
 if __name__ == '__main__':
-    file = pick_dataset()
-    n, data = parse_file(file)
+    file, path = pick_dataset()
+    n, data = parse_file(path)
     #print(f'number of columns: {n}')
     #print(f'data: {data[:3]}')
-
+    
+    for i in range(len(data)):
+        data[i]['tags'] = frozenset([hash(tag) for tag in data[i]['tags']])
 
     # get only portrait orientation
     portraits = [d for d in data if d['orientation'] == 'P']
@@ -69,23 +71,31 @@ if __name__ == '__main__':
 
     # make frameglasses for portrait paintings pairs
     # try to pair paintings to maximize the number of tags in the frame
+    import progressbar
+    pbar = progressbar.ProgressBar(maxval=len(portraits) + 1).start()
     portrait_pairs = []
     while len(portraits) > 1:
-        pair = (portraits.pop(0), portraits.pop(0))
-        tags_num = len(pair[0]['tags'].union(pair[1]['tags']))
+        pair = (portraits.pop(0), )
+        p2_index = 0
+        tags_inter_num = len(pair[0]['tags'] & portraits[p2_index]['tags'])
         for i, p in enumerate(portraits):
-            if len(p.get('tags')) < tags_num * 2:
-                break
-            if len(pair[0]['tags'].union(p['tags'])) > tags_num:
-                p2 = p
-                portraits.insert(0, pair[1])
-                pair = (pair[0], p2)
-                tags_num = len(pair[0]['tags'].union(p2['tags']))
+            # if len(p.get('tags')) < tags_num * 2:
+            #     break
+            if len(pair[0]['tags'] & p['tags']) < tags_inter_num:
+                #p2 = p
+                p2_index = i
+                #pair = (pair[0], p2)
+                tags_inter_num = len(pair[0]['tags'] & portraits[p2_index]['tags'])
+                if tags_inter_num == 0:
+                    break
+        pair = (pair[0], portraits.pop(p2_index))
         portrait_pairs.append(pair)
+        pbar.update(len(portrait_pairs))
     if portraits:
         p1 = portraits.pop()
         p2 = {'index': -1, 'orientation': 'P', 'tags': set()}
         portrait_pairs.append((p1, p2))
+    pbar.finish()
         
     #print(f'portrait pairs: {portrait_pairs[:3]}')
 
@@ -105,7 +115,7 @@ if __name__ == '__main__':
 
     # make all sets of tags as numpy unique arrays
     for frame in frames:
-        frame['tags'] = frozenset([hash(tag) for tag in frame['tags']])
+        frame['tags'] = frozenset([tag for tag in frame['tags']])
         frame['tags_len'] = len(frame['tags'])
         # n = 4
         # chuncks = [frozenset(list(frame['tags'])[i:i+n]) for i in range(0, len(frame['tags']), n)]
@@ -162,7 +172,7 @@ if __name__ == '__main__':
     from time import time
 
     # write the result to a file
-    with open(f'data/output/{time()}.txt', 'w') as f:
+    with open(f'data/output/{file}', 'w') as f:
         f.write(f'{len(frames_ordered)}\n')
         for frame in frames_ordered:
             if frame['orientation'] == 'L':

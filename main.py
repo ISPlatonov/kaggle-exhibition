@@ -137,7 +137,7 @@ if __name__ == '__main__':
             if lrs_val > max_lrs:
                 max_lrs = lrs_val
                 frame_index = i
-                frames_batch_last_index = next((j for j, f in enumerate(frames, i) if f['tags_len'] <= max_lrs * 2), frames_batch_last_index) - 1
+                frames_batch_last_index = next((j for j, f in enumerate(frames[i:]) if f['tags_len'] <= max_lrs * 2), frames_batch_last_index) - 1
                 if max_lrs == frames_ordered[-1]['tags_len'] // 2:
                     break
             else:
